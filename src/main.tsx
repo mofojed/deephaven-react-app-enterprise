@@ -1,5 +1,5 @@
 import React from "react";
-import ReactDOM from "react-dom";
+import ReactDOM from "react-dom/client";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 
 // Need to import the base style sheet for proper styling
@@ -24,11 +24,14 @@ const customThemes: ThemeData[] = [];
 // Preload any cached theme variables to avoid a flash of unstyled content
 preloadTheme();
 
-ReactDOM.render(
-  <React.StrictMode>
-    <ThemeProvider themes={customThemes}>
-      <RouterProvider router={router} />
-    </ThemeProvider>
-  </React.StrictMode>,
-  document.getElementById("root")
+const root = ReactDOM.createRoot(
+  document.getElementById("root") as HTMLElement
+);
+
+root.render(
+  // <React.StrictMode>
+  <ThemeProvider themes={customThemes}>
+    <RouterProvider router={router} />
+  </ThemeProvider>
+  // </React.StrictMode>
 );

@@ -13,6 +13,7 @@ import type {
   EnterpriseDhType,
 } from "@deephaven-enterprise/jsapi-types";
 import type { CoreClient } from "@deephaven/jsapi-types";
+import Logger from "@deephaven/log"; // Import the Deephaven logger
 import "./App.scss"; // Styles for in this app
 import {
   clientConnected,
@@ -21,6 +22,8 @@ import {
   getWebsocketUrl,
   isCorePlusWorkerKind,
 } from "./Utils";
+
+Logger.setLogLevel(10);
 
 const API_URL = import.meta.env.VITE_DEEPHAVEN_API_URL ?? "";
 
