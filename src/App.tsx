@@ -31,6 +31,28 @@ const PASSWORD = import.meta.env.VITE_DEEPHAVEN_PASSWORD ?? "";
 const enterpriseApi = dh as EnterpriseDhType;
 
 /**
+ * TODO: Can we somehow wrap all this up so the user doesn't need to load individual core APIs, look through worker kinds, etc?
+ * Make a path for getting an object that is much simpler. At a high level, there's two cases we want to make easy (for Core+, who cares about Legacy):
+ * 1. Open a table that is already on the server, given a query name and object name
+ * 2. Create a Deephaven session, create a table, and retrieve that table
+ *
+ * Example 1.
+ * const enterpriseApi = await loadEnterpriseApi(apiUrl);
+ * const client = enterpriseApi.createClient();                  // Shouldn't need the URL again since we already passed it in
+ * await client.login(...);
+ * // const descriptor = await client.getObjectDescriptor(queryName, objectName);  // Should handle fetching the Core+ API transparently
+ * const table = await client.getObject(queryName, objectName);  // Handles fetching the Core+ API transparently. Everything should return a Widget, which has a `type` so we can inspect after fetching it. Could also have a `getObjectDescriptor` method that get the descriptor instead and have this get that, though one extra step.
+ *
+ * Example 2.
+ * const enterpriseApi = await loadEnterpriseApi(apiUrl);
+ * const client = enterpriseApi.createClient();                  // Shouldn't need the URL again since we already passed it in
+ * await client.login(...);
+ * const session = await client.startSession({ ... });           // Should handle fetching the Core+ API transparently, authenticating with the token, etc.
+ * const result = await session.runCode(...);               // Should return a result that has the created/modified/deleted objects
+ * const table = await session.getObject(result.changes.created[0]); // Should return a Widget, which has a `type` so we can inspect after fetching it
+ */
+
+/**
  * Create a new Deephaven table with the session provided.
  * Creates a table that will tick once every second, with two columns:
  * - Timestamp: The timestamp of the tick

@@ -4,19 +4,20 @@ import { RouterProvider, createBrowserRouter } from "react-router-dom";
 
 // Need to import the base style sheet for proper styling
 import "@deephaven/components/scss/BaseStyleSheet.scss";
-import App from "./App";
-import IFrameApp from "./IFrameApp";
+// import App from "./App";
+// import IFrameApp from "./IFrameApp";
 import { preloadTheme, ThemeData, ThemeProvider } from "@deephaven/components";
+import { DynamicApp } from "./DynamicApp";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <DynamicApp />,
   },
-  {
-    path: "/iframe",
-    element: <IFrameApp />,
-  },
+  // {
+  //   path: "/iframe",
+  //   element: <IFrameApp />,
+  // },
 ]);
 
 const customThemes: ThemeData[] = [];

@@ -16,7 +16,7 @@
     "@deephaven/jsapi-shim": "^0.102.0",
     "@deephaven/jsapi-types": "^1.0.0-dev0.39.5",
     "@deephaven/jsapi-utils": "^0.102.0",
-    "@deephaven-enterprise/jsapi-types": "1.20240723.147-beta",
+    "@deephaven-enterprise/jsapi-types": "^1.20250801.274-beta",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-router-dom": "^6.24.0"
