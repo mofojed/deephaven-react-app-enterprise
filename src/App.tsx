@@ -17,7 +17,7 @@ import "./App.scss"; // Styles for in this app
 import {
   clientConnected,
   getCorePlusApi,
-  getGridModelByQueryName,
+  getTableByQueryName,
   getWebsocketUrl,
   isCorePlusWorkerKind,
 } from "./Utils";
@@ -40,7 +40,7 @@ const enterpriseApi = dh as EnterpriseDhType;
  */
 async function createGridModel(
   client: EnterpriseClient
-): Promise<IrisGridModel> {
+): Promise<DhType.Table> {
   // Create a new session... API is currently undocumented and subject to change in future revisions
   const ide: Ide = new enterpriseApi.Ide(client);
 
@@ -128,7 +128,8 @@ async function createGridModel(
 
     const table = await session.getObject(definition);
 
-    return IrisGridModelFactory.makeModel(coreApi, table);
+    return table;
+    // return IrisGridModelFactory.makeModel(coreApi, table);
   }
 
   const dhConsole = await ide.createConsole(config);
@@ -156,7 +157,8 @@ async function createGridModel(
 
   const table = await session.getObject(definition);
 
-  return IrisGridModelFactory.makeModel(enterpriseApi, table);
+  return table;
+  // return IrisGridModelFactory.makeModel(enterpriseApi, table);
 }
 
 /**
@@ -168,7 +170,7 @@ async function createGridModel(
  * See create-react-app docs for how to update these env vars: https://create-react-app.dev/docs/adding-custom-environment-variables/
  */
 function App() {
-  const [model, setModel] = useState<IrisGridModel>();
+  const [table, setTable] = useState<DhType.Table>();
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
   const [client, setClient] = useState<EnterpriseClient>();
@@ -196,11 +198,11 @@ function App() {
       const tableName = searchParams.get("tableName");
 
       // If a table name was specified, load that table. Otherwise, create a new table.
-      const newModel = await (queryName && tableName
-        ? getGridModelByQueryName(client, queryName, tableName)
+      const newTable = await (queryName && tableName
+        ? getTableByQueryName(client, queryName, tableName)
         : createGridModel(client));
 
-      setModel(newModel);
+      setTable(newTable);
 
       console.log("Table successfully loaded!");
     } catch (e) {
@@ -221,11 +223,11 @@ function App() {
     };
   }, [client]);
 
-  const isLoaded = model != null;
+  const isLoaded = table != null;
 
   return (
     <div className="App">
-      {isLoaded && <IrisGrid model={model} />}
+      {isLoaded && <DeephavenAgGridComponent dh={dh} table={table} />}
       {!isLoaded && (
         <LoadingOverlay
           isLoaded={isLoaded}

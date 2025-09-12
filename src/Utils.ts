@@ -10,7 +10,6 @@ import type {
   WorkerKind,
 } from "@deephaven-enterprise/jsapi-types";
 import { dh as CoreDhType } from "@deephaven/jsapi-types";
-import { IrisGridModel, IrisGridModelFactory } from "@deephaven/iris-grid";
 
 export const CLIENT_TIMEOUT = 60_000;
 
@@ -137,11 +136,11 @@ export async function getCorePlusConnection(
  * @param name Name of the table to get
  * @returns Table object
  */
-export async function getGridModel(
+export async function getTableModel(
   legacyClient: EnterpriseClient,
   queryInfo: QueryInfo,
   name: string
-): Promise<IrisGridModel> {
+): Promise<CoreDhType.Table> {
   const { workerKinds } = await legacyClient.getServerConfigValues();
   if (isCorePlusQuery(queryInfo, workerKinds)) {
     // Getting the table from the Core+ query requires a Core+ API instance
@@ -154,11 +153,13 @@ export async function getGridModel(
       type: "Table",
     };
     const table = await connection.getObject(objectDefinition);
-    return IrisGridModelFactory.makeModel(api, table);
+    return table;
+    // return IrisGridModelFactory.makeModel(api, table);
   }
   // Get the table from the legacy query
   const table = await queryInfo.getTable(name);
-  return IrisGridModelFactory.makeModel(enterpriseApi, table);
+  return table;
+  // return IrisGridModelFactory.makeModel(enterpriseApi, table);
 }
 
 /**
@@ -210,13 +211,13 @@ export async function getQuery(
  * @param tableName Name of the table to load
  * @returns Deephaven table
  */
-export async function getGridModelByQueryName(
+export async function getTableByQueryName(
   legacyClient: EnterpriseClient,
   queryName: string,
   tableName: string
-): Promise<IrisGridModel> {
+): Promise<CoreDhType.Table> {
   const query = await getQuery(legacyClient, queryName);
-  return getGridModel(legacyClient, query, tableName);
+  return getTableModel(legacyClient, query, tableName);
 }
 
 /**
