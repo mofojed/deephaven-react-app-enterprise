@@ -32,6 +32,7 @@ const enterpriseApi = dh as EnterpriseDhType;
 
 /**
  * TODO: Can we somehow wrap all this up so the user doesn't need to load individual core APIs, look through worker kinds, etc?
+ * We also want to just be able to npm install a package, rather than having to include it in the index.html
  * Make a path for getting an object that is much simpler. At a high level, there's two cases we want to make easy (for Core+, who cares about Legacy):
  * 1. Open a table that is already on the server, given a query name and object name
  * 2. Create a Deephaven session, create a table, and retrieve that table
@@ -50,6 +51,9 @@ const enterpriseApi = dh as EnterpriseDhType;
  * const session = await client.startSession({ ... });           // Should handle fetching the Core+ API transparently, authenticating with the token, etc.
  * const result = await session.runCode(...);               // Should return a result that has the created/modified/deleted objects
  * const table = await session.getObject(result.changes.created[0]); // Should return a Widget, which has a `type` so we can inspect after fetching it
+ *
+ * I've attempted a prototype with `DynamicApp` that does this, that only deals with `Table` objects and does not concern itself with plugins,
+ * filters or other table operations at this time.
  */
 
 /**
