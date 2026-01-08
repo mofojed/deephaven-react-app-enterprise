@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { loadEnterpriseApi, ObjectWrapper } from "./EnterpriseApi";
+import { loadEnterpriseApi, ObjectWrapper } from "./jsapi";
 import ObjectView from "./ObjectView";
 import "./App.scss"; // Styles for in this app
 

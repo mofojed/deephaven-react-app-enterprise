@@ -1,6 +1,14 @@
-# Example Deephaven Enterprise React Application
+# Example Deephaven Enterprise React Application - JSAPI "redesign" example
 
-This project was bootstrapped with [Vite using the react-ts template](https://vitejs.dev/guide/). It is to provide an example React application connecting to Deephaven and displaying a table of data within a dashboard.
+This project is an example React application that demonstrates the kind of Enterprise JS API pattern that I would much prefer to see going forward. Specifically, there are a couple of key features:
+
+- The API is specified in the package.json, and installed via npm rather than in the index.html. This is more in line with modern web development practices.
+- The Core API is transparently handled under the covers, so the developer doesn't need to worry about explicitly loading API from workers, etc.
+-
+
+There are obviously still a lot of details to work out (such as how/when plugins should be loaded/work), but this is a start.
+
+Check out the [jsapi](./src/jsapi/) folder for more details/comments.
 
 ## Quick Start
 
@@ -11,20 +19,4 @@ npm install
 npm start
 ```
 
-Your development server will start up. You can then open up the URL in your browser and you should see a table appear.
-
-### Fetching a Table
-
-At the default URL, it will create a table using a Legacy worker and display it using an `IrisGrid` component. To open this, simply navigate your browser to the development server URL, which is http://localhost:5173 by default.
-
-You can also create a table on a Core+ worker. To do this, navigate to http://localhost:5173/?workerKind=DeephavenCommunity&jvmArgs=-Dhttp.websockets=true, where `workerKind=DeephavenCommunity` is the Core+ worker kind configured on your system and `jvmArgs=-Dhttp.websockets=true` is the JVM argument to enable websockets required when connecting from localhost (insecure) to your server.
-
-You can also fetch a table from a PQ as well. To do this, navigate to http://localhost:5173/?queryName=MyQuery&tableName=myTable where `MyQuery` is the name of the query and `myTable` is the name of the table. This works with both Legacy and Core+ workers.
-
-View the source for this at [src/App.tsx](./src/App.tsx).
-
-## IFrame Example
-
-You can also display a widget from a Core+ query in an IFrame. To do this, navigate to http://localhost:5173/iframe/?queryName=MyQuery&widgetName=myWidget where `MyQuery` is the name of the query and `myWidget` is the name of the widget. NOTE: This will only work with Core+ workers.
-
-View the source for this at [src/IFrameApp.tsx](./src/IFrameApp.tsx).
+Your development server will start up. It defaults to 5173, and for this demo you need to specify the query name/table name. Easiest to just go to http://localhost:5173/?queryName=WebClientData2&tableName=workspaceData to open the workspace data table.
