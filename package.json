@@ -13,7 +13,7 @@
     "@deephaven/components": "^0.102.0",
     "@deephaven/dashboard": "^0.102.0",
     "@deephaven/iris-grid": "^0.102.0",
-    "@deephaven/js-plugin-ag-grid": "0.2.1-ag-grid-no-components.930+0ba58bc",
+    "@deephaven/js-plugin-ag-grid": "^0.5.2",
     "@deephaven/jsapi-bootstrap": "^0.102.0",
     "@deephaven/jsapi-shim": "^0.102.0",
     "@deephaven/jsapi-types": "^1.0.0-dev0.39.5",

@@ -21,6 +21,7 @@ import {
   getWebsocketUrl,
   isCorePlusWorkerKind,
 } from "./Utils";
+import DeephavenAgGridComponent from "./DeephavenAgGridComponent";
 
 const API_URL = import.meta.env.VITE_DEEPHAVEN_API_URL ?? "";
 
