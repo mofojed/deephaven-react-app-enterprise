@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { loadEnterpriseApi, ObjectWrapper } from "./jsapi";
+import { loadEnterpriseApi, ObjectWrapper } from "./jsapi"; // E.g. '@deephaven/jsapi' package
 import ObjectView from "./ObjectView";
 import "./App.scss"; // Styles for in this app
 
