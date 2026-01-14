@@ -1,6 +1,10 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import type { dh as DhType } from "@deephaven/jsapi-types";
-import { AgGridView } from "@deephaven/js-plugin-ag-grid";
+import {
+  AgGridView,
+  AgGridViewProps,
+  getDefaultProps,
+} from "@deephaven/js-plugin-ag-grid";
 import { ApiContext } from "@deephaven/jsapi-bootstrap";
 
 function DeephavenAgGridComponent({
@@ -8,11 +12,24 @@ function DeephavenAgGridComponent({
   table,
 }: {
   api: typeof DhType;
-  table: DhType.Table;
+  table: DhType.Table | DhType.coreplus.pivot.PivotTable;
 }) {
+  const handleSelectionChanged = useCallback((event: unknown) => {
+    console.log("Selection changed:", event);
+  }, []);
+  const agGridProps: AgGridViewProps["agGridProps"] = useMemo(
+    () => ({
+      ...getDefaultProps(),
+      rowSelection: {
+        mode: "singleRow",
+      },
+      onSelectionChanged: handleSelectionChanged,
+    }),
+    [handleSelectionChanged]
+  );
   return (
     <ApiContext.Provider value={api}>
-      <AgGridView table={table} />
+      <AgGridView table={table} agGridProps={agGridProps} />
     </ApiContext.Provider>
   );
 }

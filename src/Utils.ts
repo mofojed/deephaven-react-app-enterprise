@@ -17,6 +17,16 @@ export const QUERY_TIMEOUT = 10_000;
 
 const enterpriseApi = dh as EnterpriseDhType;
 
+export function isWidget(obj: unknown): obj is CoreDhType.Widget {
+  return (
+    obj != null &&
+    typeof obj === "object" &&
+    "exportedObjects" in obj &&
+    "type" in obj &&
+    typeof (obj as CoreDhType.Widget).type === "string"
+  );
+}
+
 /**
  * Get the WebSocket URL for connecting to the JS API
  * @param baseUrl Base URL to get the websocket URL for
@@ -140,7 +150,7 @@ export async function getTableModel(
   legacyClient: EnterpriseClient,
   queryInfo: QueryInfo,
   name: string
-): Promise<CoreDhType.Table> {
+): Promise<CoreDhType.Table | CoreDhType.coreplus.pivot.PivotTable> {
   const { workerKinds } = await legacyClient.getServerConfigValues();
   if (isCorePlusQuery(queryInfo, workerKinds)) {
     // Getting the table from the Core+ query requires a Core+ API instance
@@ -148,11 +158,24 @@ export async function getTableModel(
     const api = await getCorePlusApi(queryInfo.jsApiUrl);
     const token = await legacyClient.createAuthToken("RemoteQueryProcessor");
     const connection = await getCorePlusConnection(api, token, queryInfo);
-    const objectDefinition = {
-      name,
-      type: "Table",
-    };
+    const objectDefinition = queryInfo.designated?.objects.find(
+      (obj) => obj.name === name
+    );
+    if (objectDefinition == null) {
+      throw new Error(
+        `Table ${name} not found in designated objects for query ${queryInfo.name}`
+      );
+    }
     const table = await connection.getObject(objectDefinition);
+    if (isWidget(table)) {
+      if (table.type === "PivotTable") {
+        return new api.coreplus.pivot.PivotTable(table);
+      }
+      throw new Error(
+        `Object ${name} is an unrecognized Widget type ${table.type}, not a Table`
+      );
+    }
+
     return table;
     // return IrisGridModelFactory.makeModel(api, table);
   }
@@ -215,7 +238,7 @@ export async function getTableByQueryName(
   legacyClient: EnterpriseClient,
   queryName: string,
   tableName: string
-): Promise<CoreDhType.Table> {
+): Promise<CoreDhType.Table | CoreDhType.coreplus.pivot.PivotTable> {
   const query = await getQuery(legacyClient, queryName);
   return getTableModel(legacyClient, query, tableName);
 }

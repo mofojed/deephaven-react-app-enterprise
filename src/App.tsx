@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { LoadingOverlay } from "@deephaven/components"; // Use the loading spinner from the Deephaven components package
-import {
-  IrisGrid,
-  IrisGridModel,
-  IrisGridModelFactory,
-} from "@deephaven/iris-grid"; // iris-grid is used to display Deephaven tables
 import dh from "@deephaven/jsapi-shim"; // Import the shim to use the JS API
 import type {
   ConsoleConfig,
@@ -17,6 +12,7 @@ import "./App.scss"; // Styles for in this app
 import {
   clientConnected,
   getCorePlusApi,
+  getQuery,
   getTableByQueryName,
   getWebsocketUrl,
   isCorePlusWorkerKind,
@@ -171,10 +167,13 @@ async function createGridModel(
  * See create-react-app docs for how to update these env vars: https://create-react-app.dev/docs/adding-custom-environment-variables/
  */
 function App() {
-  const [table, setTable] = useState<DhType.Table>();
+  const [table, setTable] = useState<
+    DhType.Table | DhType.coreplus.pivot.PivotTable
+  >();
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
   const [client, setClient] = useState<EnterpriseClient>();
+  const [coreApi, setCoreApi] = useState<typeof DhType>();
 
   const initApp = useCallback(async () => {
     try {
@@ -197,6 +196,10 @@ function App() {
       const searchParams = new URLSearchParams(window.location.search);
       const queryName = searchParams.get("queryName");
       const tableName = searchParams.get("tableName");
+
+      const query = await getQuery(client, queryName ?? "");
+      const coreApi = await getCorePlusApi(query.designated?.jsApiUrl ?? "");
+      setCoreApi(coreApi);
 
       // If a table name was specified, load that table. Otherwise, create a new table.
       const newTable = await (queryName && tableName
@@ -224,11 +227,11 @@ function App() {
     };
   }, [client]);
 
-  const isLoaded = table != null;
+  const isLoaded = table != null && coreApi != null;
 
   return (
     <div className="App">
-      {isLoaded && <DeephavenAgGridComponent dh={dh} table={table} />}
+      {isLoaded && <DeephavenAgGridComponent api={coreApi} table={table} />}
       {!isLoaded && (
         <LoadingOverlay
           isLoaded={isLoaded}
