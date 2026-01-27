@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { dh as DhType } from "@deephaven/jsapi-types";
 import {
+  AgGridDhTheme,
   AgGridView,
   AgGridViewProps,
   getDefaultProps,
@@ -10,8 +11,9 @@ import {
 import { ApiContext } from "@deephaven/jsapi-bootstrap";
 import { Grid } from "@deephaven/components";
 import {
-  FilterModel,
-  GridApi,
+  type FilterModel,
+  type GridApi,
+  themeQuartz,
   type SelectionChangedEvent,
 } from "ag-grid-community";
 
@@ -22,6 +24,13 @@ function DeephavenAgGridComponent({
   api: typeof DhType;
   table: DhType.Table | DhType.coreplus.pivot.PivotTable;
 }) {
+  const themeParams = useMemo(() => AgGridDhTheme.getThemeParams(), []);
+
+  const theme = useMemo(
+    () => themeQuartz.withParams(themeParams),
+    [themeParams],
+  );
+
   const [sourceTable, setSourceTable] = useState<DhType.Table>();
   const [gridApi, setGridApi] = useState<GridApi>();
   const handleSelectionChanged = useCallback(
@@ -92,8 +101,9 @@ function DeephavenAgGridComponent({
         mode: "multiRow",
       },
       onSelectionChanged: handleSelectionChanged,
+      theme,
     }),
-    [handleSelectionChanged],
+    [handleSelectionChanged, theme],
   );
 
   const sourceProps: AgGridViewProps["agGridProps"] = useMemo(
@@ -102,8 +112,9 @@ function DeephavenAgGridComponent({
       onModelUpdated: (event) => {
         setGridApi(event.api);
       },
+      theme,
     }),
-    [],
+    [theme],
   );
 
   useEffect(() => {
