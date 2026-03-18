@@ -10,22 +10,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@deephaven/components": "^0.106.2",
-    "@deephaven/dashboard": "^0.106.2",
-    "@deephaven/iris-grid": "^0.106.2",
+    "@deephaven/components": "^1.0.0",
+    "@deephaven/iris-grid": "^1.0.0",
     "@deephaven/js-plugin-ag-grid": "^0.5.2",
-    "@deephaven/jsapi-bootstrap": "^0.106.2",
-    "@deephaven/jsapi-shim": "^0.106.0",
+    "@deephaven/jsapi-bootstrap": "^1.0.0",
+    "@deephaven/jsapi-shim": "^1.0.0",
     "@deephaven/jsapi-types": "^1.0.0-dev0.39.5",
-    "@deephaven/jsapi-utils": "^0.106.2",
+    "@deephaven/jsapi-utils": "^1.0.0",
     "@deephaven-enterprise/jsapi-types": "1.20240723.147-beta",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-router-dom": "^6.24.0"
   },
   "devDependencies": {
-    "@types/react": "^17.0.2",
-    "@types/react-dom": "^17.0.9",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vitejs/plugin-react": "^4.0.3",
@@ -35,5 +34,16 @@
     "sass": "^1.66.1",
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
+  },
+  "overrides": {
+    "@deephaven/js-plugin-ag-grid": {
+      "@deephaven/icons": "^1.0.0",
+      "@deephaven/jsapi-bootstrap": "^1.0.0",
+      "@deephaven/jsapi-utils": "^1.0.0",
+      "@deephaven/redux": "^1.0.0",
+      "@deephaven/log": "^1.0.0",
+      "@deephaven/plugin": "^1.0.0",
+      "@deephaven/utils": "^1.0.0"
+    }
   }
 }

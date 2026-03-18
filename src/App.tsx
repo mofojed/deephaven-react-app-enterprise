@@ -40,8 +40,8 @@ const enterpriseApi = dh as EnterpriseDhType;
  * @returns Deephaven table
  */
 async function createGridModel(
-  client: EnterpriseClient
-): Promise<DhType.Table> {
+  client: EnterpriseClient,
+): Promise<[DhType.Table, typeof DhType]> {
   // Create a new session... API is currently undocumented and subject to change in future revisions
   const ide: Ide = new enterpriseApi.Ide(client);
 
@@ -95,7 +95,7 @@ async function createGridModel(
         : undefined;
     const coreClient: DhType.CoreClient = new coreApi.CoreClient(
       grpcUrl,
-      clientOptions
+      clientOptions,
     );
 
     // Generate an auth token from the enterprise client to connect
@@ -118,7 +118,7 @@ async function createGridModel(
     // Run the code you want to run. This example just creates a time_table
     await session.runCode("from deephaven import time_table");
     const result = await session.runCode(
-      't = time_table("PT1s").update("A=i")'
+      't = time_table("PT1s").update("A=i")',
     );
 
     // Get the new table definition from the results
@@ -129,7 +129,7 @@ async function createGridModel(
 
     const table = await session.getObject(definition);
 
-    return table;
+    return [table, coreApi];
     // return IrisGridModelFactory.makeModel(coreApi, table);
   }
 
@@ -147,7 +147,7 @@ async function createGridModel(
   // Run the code you want to run. This example just creates a timeTable
   await session.runCode("from deephaven.TableTools import timeTable");
   const result = await session.runCode(
-    't = timeTable("00:00:01").update("A=i")'
+    't = timeTable("00:00:01").update("A=i")',
   );
 
   // Get the new table definition from the results
@@ -158,7 +158,7 @@ async function createGridModel(
 
   const table = await session.getObject(definition);
 
-  return table;
+  return [table, dh];
   // return IrisGridModelFactory.makeModel(enterpriseApi, table);
 }
 
@@ -172,6 +172,7 @@ async function createGridModel(
  */
 function App() {
   const [table, setTable] = useState<DhType.Table>();
+  const [api, setApi] = useState<typeof DhType>();
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
   const [client, setClient] = useState<EnterpriseClient>();
@@ -199,11 +200,12 @@ function App() {
       const tableName = searchParams.get("tableName");
 
       // If a table name was specified, load that table. Otherwise, create a new table.
-      const newTable = await (queryName && tableName
+      const [newTable, newApi] = await (queryName && tableName
         ? getTableByQueryName(client, queryName, tableName)
         : createGridModel(client));
 
       setTable(newTable);
+      setApi(newApi);
 
       console.log("Table successfully loaded!");
     } catch (e) {
@@ -224,11 +226,11 @@ function App() {
     };
   }, [client]);
 
-  const isLoaded = table != null;
+  const isLoaded = table != null && api != null;
 
   return (
     <div className="App">
-      {isLoaded && <DeephavenAgGridComponent dh={dh} table={table} />}
+      {isLoaded && <DeephavenAgGridComponent api={api} table={table} />}
       {!isLoaded && (
         <LoadingOverlay
           isLoaded={isLoaded}

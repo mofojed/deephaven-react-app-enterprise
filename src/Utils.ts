@@ -34,7 +34,7 @@ export function getWebsocketUrl(baseUrl: URL): URL {
 
 export function isCorePlusWorkerKind(
   workerKindName: string,
-  workerKinds: WorkerKind[]
+  workerKinds: WorkerKind[],
 ): boolean {
   const workerKind = workerKinds.find(({ name }) => name === workerKindName);
   return workerKind?.protocols?.includes("Community") ?? false;
@@ -48,7 +48,7 @@ export function isCorePlusWorkerKind(
  */
 export function isCorePlusQuery(
   queryInfo: QueryInfo,
-  workerKinds: WorkerKind[]
+  workerKinds: WorkerKind[],
 ) {
   return isCorePlusWorkerKind(queryInfo.workerKind, workerKinds);
 }
@@ -59,7 +59,7 @@ export function isCorePlusQuery(
  * @returns Core+ API from that URL
  */
 export async function getCorePlusApi(
-  jsApiUrl: string
+  jsApiUrl: string,
 ): Promise<typeof CoreDhType> {
   // Dynamically load the API instance from the given URL
   console.log("Import API", jsApiUrl);
@@ -85,7 +85,7 @@ export async function getCorePlusClient(
   api: typeof CoreDhType,
   token: string,
   grpcUrl: string,
-  envoyPrefix?: string | null
+  envoyPrefix?: string | null,
 ): Promise<CoreDhType.CoreClient> {
   // Create a Core+ client instance and authenticate
   const clientOptions = envoyPrefix
@@ -116,7 +116,7 @@ export async function getCorePlusClient(
 export async function getCorePlusConnection(
   api: typeof CoreDhType,
   token: string,
-  queryInfo: QueryInfo
+  queryInfo: QueryInfo,
 ) {
   const { serial, grpcUrl, envoyPrefix } = queryInfo;
   console.log("Get Core+ Client for query", serial);
@@ -124,7 +124,7 @@ export async function getCorePlusConnection(
     api,
     token,
     grpcUrl,
-    envoyPrefix
+    envoyPrefix,
   );
   return corePlusClient.getAsIdeConnection();
 }
@@ -139,8 +139,8 @@ export async function getCorePlusConnection(
 export async function getTableModel(
   legacyClient: EnterpriseClient,
   queryInfo: QueryInfo,
-  name: string
-): Promise<CoreDhType.Table> {
+  name: string,
+): Promise<[CoreDhType.Table, typeof CoreDhType]> {
   const { workerKinds } = await legacyClient.getServerConfigValues();
   if (isCorePlusQuery(queryInfo, workerKinds)) {
     // Getting the table from the Core+ query requires a Core+ API instance
@@ -153,12 +153,12 @@ export async function getTableModel(
       type: "Table",
     };
     const table = await connection.getObject(objectDefinition);
-    return table;
+    return [table, api];
     // return IrisGridModelFactory.makeModel(api, table);
   }
   // Get the table from the legacy query
   const table = await queryInfo.getTable(name);
-  return table;
+  return [table, enterpriseApi];
   // return IrisGridModelFactory.makeModel(enterpriseApi, table);
 }
 
@@ -169,7 +169,7 @@ export async function getTableModel(
  */
 export async function getQuery(
   client: EnterpriseClient,
-  queryName: string
+  queryName: string,
 ): Promise<QueryInfo> {
   console.log("Fetching query", queryName);
 
@@ -196,7 +196,7 @@ export async function getQuery(
 
     const removeListener = client.addEventListener(
       enterpriseApi.Client.EVENT_CONFIG_ADDED,
-      listener
+      listener,
     );
     const initialQueries = client.getKnownConfigs();
     resolveIfQueryFound(initialQueries);
@@ -214,8 +214,8 @@ export async function getQuery(
 export async function getTableByQueryName(
   legacyClient: EnterpriseClient,
   queryName: string,
-  tableName: string
-): Promise<CoreDhType.Table> {
+  tableName: string,
+): Promise<[CoreDhType.Table, typeof CoreDhType]> {
   const query = await getQuery(legacyClient, queryName);
   return getTableModel(legacyClient, query, tableName);
 }

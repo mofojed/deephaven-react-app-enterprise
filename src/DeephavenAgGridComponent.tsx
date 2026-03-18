@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import type { dh as DhType } from "@deephaven/jsapi-types";
-import { AgGridView } from "@deephaven/js-plugin-ag-grid";
+import { AgGridView, getDefaultProps } from "@deephaven/js-plugin-ag-grid";
 import { ApiContext } from "@deephaven/jsapi-bootstrap";
 
 function DeephavenAgGridComponent({
@@ -10,9 +10,10 @@ function DeephavenAgGridComponent({
   api: typeof DhType;
   table: DhType.Table;
 }) {
+  const agGridProps = useMemo(() => getDefaultProps(), []);
   return (
     <ApiContext.Provider value={api}>
-      <AgGridView table={table} />
+      <AgGridView table={table} agGridProps={agGridProps} />
     </ApiContext.Provider>
   );
 }
