@@ -11,6 +11,8 @@ import type {
 } from "@deephaven-enterprise/jsapi-types";
 import { dh as CoreDhType } from "@deephaven/jsapi-types";
 import { IrisGridModel, IrisGridModelFactory } from "@deephaven/iris-grid";
+import type { WorkerClientProxy } from "./WorkerClientProxy";
+import type { SerializableQueryInfo } from "./worker-protocol";
 
 export const CLIENT_TIMEOUT = 60_000;
 
@@ -35,7 +37,7 @@ export function getWebsocketUrl(baseUrl: URL): URL {
 
 export function isCorePlusWorkerKind(
   workerKindName: string,
-  workerKinds: WorkerKind[]
+  workerKinds: readonly { name: string; protocols: string[] }[],
 ): boolean {
   const workerKind = workerKinds.find(({ name }) => name === workerKindName);
   return workerKind?.protocols?.includes("Community") ?? false;
@@ -49,7 +51,7 @@ export function isCorePlusWorkerKind(
  */
 export function isCorePlusQuery(
   queryInfo: QueryInfo,
-  workerKinds: WorkerKind[]
+  workerKinds: WorkerKind[],
 ) {
   return isCorePlusWorkerKind(queryInfo.workerKind, workerKinds);
 }
@@ -60,7 +62,7 @@ export function isCorePlusQuery(
  * @returns Core+ API from that URL
  */
 export async function getCorePlusApi(
-  jsApiUrl: string
+  jsApiUrl: string,
 ): Promise<typeof CoreDhType> {
   // Dynamically load the API instance from the given URL
   console.log("Import API", jsApiUrl);
@@ -86,7 +88,7 @@ export async function getCorePlusClient(
   api: typeof CoreDhType,
   token: string,
   grpcUrl: string,
-  envoyPrefix?: string | null
+  envoyPrefix?: string | null,
 ): Promise<CoreDhType.CoreClient> {
   // Create a Core+ client instance and authenticate
   const clientOptions = envoyPrefix
@@ -117,7 +119,7 @@ export async function getCorePlusClient(
 export async function getCorePlusConnection(
   api: typeof CoreDhType,
   token: string,
-  queryInfo: QueryInfo
+  queryInfo: QueryInfo,
 ) {
   const { serial, grpcUrl, envoyPrefix } = queryInfo;
   console.log("Get Core+ Client for query", serial);
@@ -125,7 +127,7 @@ export async function getCorePlusConnection(
     api,
     token,
     grpcUrl,
-    envoyPrefix
+    envoyPrefix,
   );
   return corePlusClient.getAsIdeConnection();
 }
@@ -140,7 +142,7 @@ export async function getCorePlusConnection(
 export async function getGridModel(
   legacyClient: EnterpriseClient,
   queryInfo: QueryInfo,
-  name: string
+  name: string,
 ): Promise<IrisGridModel> {
   const { workerKinds } = await legacyClient.getServerConfigValues();
   if (isCorePlusQuery(queryInfo, workerKinds)) {
@@ -168,7 +170,7 @@ export async function getGridModel(
  */
 export async function getQuery(
   client: EnterpriseClient,
-  queryName: string
+  queryName: string,
 ): Promise<QueryInfo> {
   console.log("Fetching query", queryName);
 
@@ -195,7 +197,7 @@ export async function getQuery(
 
     const removeListener = client.addEventListener(
       enterpriseApi.Client.EVENT_CONFIG_ADDED,
-      listener
+      listener,
     );
     const initialQueries = client.getKnownConfigs();
     resolveIfQueryFound(initialQueries);
@@ -213,7 +215,7 @@ export async function getQuery(
 export async function getGridModelByQueryName(
   legacyClient: EnterpriseClient,
   queryName: string,
-  tableName: string
+  tableName: string,
 ): Promise<IrisGridModel> {
   const query = await getQuery(legacyClient, queryName);
   return getGridModel(legacyClient, query, tableName);
@@ -241,4 +243,94 @@ export async function clientConnected(client: EnterpriseClient): Promise<void> {
       clearTimeout(timer);
     });
   });
+}
+
+/**
+ * Load an IrisGridModel via the SharedWorker proxy.
+ * Gets query info and auth token from the shared worker, then creates
+ * a Core+ gRPC connection directly from this tab.
+ * Legacy (non-Core+) queries fall back to a per-tab EnterpriseClient.
+ */
+export async function getGridModelFromWorker(
+  proxy: WorkerClientProxy,
+  queryName: string,
+  tableName: string,
+): Promise<IrisGridModel> {
+  const t0 = performance.now();
+
+  const queryInfo = await proxy.getQuery(queryName);
+  console.log(
+    `[Worker] getQuery took ${(performance.now() - t0).toFixed(0)}ms`,
+  );
+
+  const serverConfig = await proxy.getServerConfigValues();
+  console.log(
+    `[Worker] getServerConfigValues took ${(performance.now() - t0).toFixed(0)}ms (cumulative)`,
+  );
+
+  if (isCorePlusWorkerKind(queryInfo.workerKind, serverConfig.workerKinds)) {
+    const tApi = performance.now();
+    const api = await getCorePlusApi(queryInfo.jsApiUrl);
+    console.log(
+      `[Worker] Core+ API loaded in ${(performance.now() - tApi).toFixed(0)}ms`,
+    );
+
+    const tAuth = performance.now();
+    const token = await proxy.createAuthToken("RemoteQueryProcessor");
+    console.log(
+      `[Worker] Auth token obtained in ${(performance.now() - tAuth).toFixed(0)}ms`,
+    );
+
+    const tConn = performance.now();
+    const connection = await getCorePlusConnectionFromSerializable(
+      api,
+      token,
+      queryInfo,
+    );
+    console.log(
+      `[Worker] Core+ connection established in ${(performance.now() - tConn).toFixed(0)}ms`,
+    );
+
+    const tTable = performance.now();
+    const table = await connection.getObject({
+      name: tableName,
+      type: "Table",
+    });
+    const model = IrisGridModelFactory.makeModel(api, table);
+    console.log(
+      `[Worker] Table fetched + model created in ${(performance.now() - tTable).toFixed(0)}ms (total getGridModel: ${(performance.now() - t0).toFixed(0)}ms)`,
+    );
+    return model;
+  }
+
+  // Legacy queries cannot be served through the SharedWorker because
+  // queryInfo.getTable() is bound to the client's WebSocket.
+  // Fall back to a per-tab connection with a warning.
+  console.warn(
+    "[SharedWorker] Legacy query detected – falling back to per-tab connection for",
+    queryName,
+  );
+  throw new Error(
+    `Legacy queries are not supported via SharedWorker. Query "${queryName}" uses worker kind "${queryInfo.workerKind}".`,
+  );
+}
+
+/**
+ * Like getCorePlusConnection but accepts a SerializableQueryInfo
+ * (plain object from the shared worker) instead of the full QueryInfo class.
+ */
+export async function getCorePlusConnectionFromSerializable(
+  api: typeof CoreDhType,
+  token: string,
+  queryInfo: SerializableQueryInfo,
+) {
+  const { serial, grpcUrl, envoyPrefix } = queryInfo;
+  console.log("Get Core+ Client for query", serial);
+  const corePlusClient = await getCorePlusClient(
+    api,
+    token,
+    grpcUrl,
+    envoyPrefix,
+  );
+  return corePlusClient.getAsIdeConnection();
 }

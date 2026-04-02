@@ -1,33 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { LoadingOverlay } from "@deephaven/components"; // Use the loading spinner from the Deephaven components package
-import dh from "@deephaven/jsapi-shim"; // Import the shim to use the JS API
 import "./App.scss"; // Styles for in this app
 import {
   LOGIN_OPTIONS_REQUEST,
   isMessage,
   makeResponse,
 } from "@deephaven/jsapi-utils";
-import type {
-  EnterpriseClient,
-  EnterpriseDhType,
-} from "@deephaven-enterprise/jsapi-types";
-import {
-  clientConnected,
-  getQuery,
-  getWebsocketUrl,
-  isCorePlusQuery,
-} from "./Utils";
-
-const API_URL = import.meta.env.VITE_DEEPHAVEN_API_URL ?? "";
-
-const USER = import.meta.env.VITE_DEEPHAVEN_USER ?? "";
-
-const PASSWORD = import.meta.env.VITE_DEEPHAVEN_PASSWORD ?? "";
+import { isCorePlusWorkerKind } from "./Utils";
+import { getWorkerClientProxy, WorkerClientProxy } from "./WorkerClientProxy";
 
 const WIDTH = 800;
 const HEIGHT = 600;
-
-const enterpriseApi = dh as EnterpriseDhType;
 
 /**
  * A functional React component that opens an IFrame to a table in a specified Core+ PQ. Will pass the authentication details to the IFrame so it does not need to login.
@@ -42,25 +25,14 @@ function App() {
   const [iframeUrl, setIframeUrl] = useState<string>();
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(true);
-  const [client, setClient] = useState<EnterpriseClient>();
+  const [proxy, setProxy] = useState<WorkerClientProxy>();
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   const initApp = useCallback(async () => {
     try {
-      // Connect to the Web API server
-      const baseUrl = new URL(API_URL ?? "", `${window.location}`);
-
-      const websocketUrl = getWebsocketUrl(baseUrl);
-
-      console.log(`Creating client ${websocketUrl}...`);
-
-      const client = new enterpriseApi.Client(websocketUrl.href);
-
-      setClient(client);
-
-      await clientConnected(client);
-
-      await client.login({ username: USER, token: PASSWORD, type: "password" });
+      const workerProxy = getWorkerClientProxy();
+      await workerProxy.waitForReady();
+      setProxy(workerProxy);
 
       // Get the table name from the search params `queryName` and `tableName`.
       const searchParams = new URLSearchParams(window.location.search);
@@ -68,20 +40,22 @@ function App() {
       const widgetName = searchParams.get("widgetName") ?? "";
       if (queryName === "" || widgetName === "") {
         throw new Error(
-          "Missing query or widget name in URL. Please provide the 'queryName' and 'widgetName' query params in the URL."
+          "Missing query or widget name in URL. Please provide the 'queryName' and 'widgetName' query params in the URL.",
         );
       }
 
       // Get the PQ specified by the query name
-      const query = await getQuery(client, queryName);
+      const query = await workerProxy.getQuery(queryName);
       console.log("Query successfully loaded!", query);
 
       if (query.status !== "Running") {
         throw new Error(`Query ${queryName} is not running`);
       }
 
-      const serverConfigValues = await client.getServerConfigValues();
-      if (!isCorePlusQuery(query, serverConfigValues.workerKinds)) {
+      const serverConfigValues = await workerProxy.getServerConfigValues();
+      if (
+        !isCorePlusWorkerKind(query.workerKind, serverConfigValues.workerKinds)
+      ) {
         throw new Error(`Query ${queryName} is not a Core+ query`);
       }
 
@@ -94,7 +68,7 @@ function App() {
       // The name parameter specifies the widget to open
       const newUrl = new URL(
         `../iframe/widget/?authProvider=parent&name=${widgetName}${envoyParam}`,
-        query.ideUrl
+        query.ideUrl,
       );
       console.log("Setting IFrame URL to", newUrl.href);
       setIframeUrl(newUrl.href);
@@ -108,13 +82,6 @@ function App() {
   useEffect(() => {
     initApp();
   }, [initApp]);
-
-  useEffect(() => {
-    return () => {
-      // On unmount, disconnect the client we created (which cleans up the session)
-      client?.disconnect();
-    };
-  }, [client]);
 
   /**
    * Handle an authentication request.
@@ -139,13 +106,13 @@ function App() {
         return;
       }
 
-      if (client == null) {
-        console.error("Client not initialized");
+      if (proxy == null) {
+        console.error("Worker proxy not initialized");
         return;
       }
 
-      // Create the auth token to send back
-      const token = await client.createAuthToken("RemoteQueryProcessor");
+      // Create the auth token to send back via the shared worker
+      const token = await proxy.createAuthToken("RemoteQueryProcessor");
 
       // Create the LoginOptions object to send back
       const loginOptions = {
@@ -156,7 +123,7 @@ function App() {
       // Send the token back to the IFrame
       source.postMessage(makeResponse(data.id, loginOptions), origin);
     },
-    [client]
+    [proxy],
   );
 
   // Wire up our listener for authentication requests
